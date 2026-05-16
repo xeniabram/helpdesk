@@ -48,6 +48,11 @@ SEED_TICKETS = [
 
 
 async def seed_tickets(session: AsyncSession) -> int:
-    stmt = insert(Ticket).values(SEED_TICKETS).on_conflict_do_nothing(index_elements=["title"])
+    stmt = (
+        insert(Ticket)
+        .values(SEED_TICKETS)
+        .on_conflict_do_nothing(index_elements=["title"])
+        .returning(Ticket.id)
+    )
     result = await session.execute(stmt)
-    return result.rowcount
+    return len(result.all())
