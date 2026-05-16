@@ -30,6 +30,8 @@ The response returned a single model: `unsloth/Qwen3.5-9B`.
 
 ### 3. Streaming Architecture
 
+Warning: the summaries are very short and events arrive very fast. The streaming might not be visible from the ui. Common sense of summarizing won over the visibility of completing the assignment :)
+
 The data flow:
 
 ```
@@ -78,6 +80,7 @@ All credentials (database URL, LLM API key) are passed as environment variables 
 - No production-optimized frontend build (running Vite dev server in Docker)
 - Minimal CSS - functional but not polished
 - No caching of LLM summaries
+- From dev perspective - no branching, no clear commit messages, all in one go.
 
 **Would add first with 3 more hours:**
 - Integration tests for the backend (pytest + httpx async client), automatic e2e testing.
