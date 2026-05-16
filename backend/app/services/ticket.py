@@ -1,16 +1,18 @@
 import asyncio
 import json
+import logging
 from collections.abc import AsyncGenerator
 
 from openai import AsyncOpenAI
 from sse_starlette.event import ServerSentEvent
 
 from app.core.constants import LLM_SYSTEM_PROMPT, LLM_TTFT_TIMEOUT
+from app.core.exceptions import NotFoundError
 from app.models import TicketStatus
 from app.repositories.ticket import TicketRepository
 from app.schemas import TicketOut
 
-
+logger = logging.getLogger(__name__)
 class TicketService:
     def __init__(
         self,
@@ -25,8 +27,11 @@ class TicketService:
     async def list_tickets(self, status: TicketStatus | None = None) -> list[TicketOut]:
         return await self._repo.get_all(status)
 
-    async def get_ticket(self, ticket_id: int) -> TicketOut | None:
-        return await self._repo.get_by_id(ticket_id)
+    async def get_ticket(self, ticket_id: int) -> TicketOut:
+        ticket = await self._repo.get_by_id(ticket_id)
+        if not ticket:
+            raise NotFoundError(f"Ticket {ticket_id} not found")
+        return ticket
 
     async def generate_summary(self, ticket: TicketOut) -> AsyncGenerator[str | ServerSentEvent]:
         try:
@@ -53,9 +58,14 @@ class TicketService:
                     yield json.dumps({"content": chunk.choices[0].delta.content})
             yield ServerSentEvent(data="", event="done")
         except TimeoutError:
+            logger.error("LLM TTFT timeout for ticket %s", ticket.id)
             yield ServerSentEvent(
                 data=json.dumps({"error": "LLM took too long to respond"}),
                 event="error",
             )
-        except Exception as e:
-            yield ServerSentEvent(data=json.dumps({"error": str(e)}), event="error")
+        except Exception:
+            logger.exception("LLM error for ticket %s", ticket.id)
+            yield ServerSentEvent(
+                data=json.dumps({"error": "An unexpected error occurred"}),
+                event="error",
+            )

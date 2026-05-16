@@ -1,5 +1,5 @@
 [project]
-name = "hepldesk-backend"
+name = "helpdesk-backend"
 version = "0.1.0"
 description = "helpdesk"
 requires-python = ">=3.13"

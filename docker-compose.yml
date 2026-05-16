@@ -1,25 +1,24 @@
 services:
-  db:
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_USER: helpdesk
-      POSTGRES_PASSWORD: helpdesk
-      POSTGRES_DB: helpdesk
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
 
   backend:
     build: ./backend
     ports:
       - "8000:8000"
     env_file: .env
-    depends_on:
-      - db
     volumes:
       - ./backend/app:/app/app
       - ./backend/alembic:/app/alembic
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      API_URL: http://backend:8000
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/src:/app/src
 
 volumes:
   pgdata:

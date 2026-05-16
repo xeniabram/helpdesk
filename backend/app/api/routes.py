@@ -1,9 +1,12 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
 
+from app.api.dependencies.db import get_session
 from app.api.dependencies.tickets import TicketServiceDep
 from app.models import TicketStatus
 from app.schemas import TicketOut
+from app.seed import seed_tickets
 
 router = APIRouter(prefix="/api")
 
@@ -21,10 +24,7 @@ async def get_ticket(
     ticket_id: int,
     service: TicketServiceDep,
 ):
-    ticket = await service.get_ticket(ticket_id)
-    if not ticket:
-        raise HTTPException(status_code=404, detail="Ticket not found")
-    return ticket
+    return await service.get_ticket(ticket_id)
 
 
 @router.get("/tickets/{ticket_id}/summary")
@@ -33,6 +33,10 @@ async def get_ticket_summary(
     service: TicketServiceDep,
 ):
     ticket = await service.get_ticket(ticket_id)
-    if not ticket:
-        raise HTTPException(status_code=404, detail="Ticket not found")
     return EventSourceResponse(service.generate_summary(ticket))
+
+
+@router.post("/seed")
+async def seed(db: AsyncSession = Depends(get_session)):
+    inserted = await seed_tickets(db)
+    return {"inserted": inserted}

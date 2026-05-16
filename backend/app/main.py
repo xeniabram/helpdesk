@@ -3,12 +3,14 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.requests import Request
 
 from app.api.dependencies import setup_dependencies
 from app.api.routes import router
 from app.core.config import settings
 from app.core.db import get_async_engine, get_async_sessionmaker
-from app.seed import seed_tickets
+from app.core.exceptions import NotFoundError
 
 logging.basicConfig(
     level=logging.INFO,
@@ -21,9 +23,6 @@ logging.basicConfig(
 async def lifespan(app: FastAPI):
     engine = get_async_engine(settings.database_url)
     sessionmaker = get_async_sessionmaker(engine)
-
-    async with sessionmaker() as session, session.begin():
-        await seed_tickets(session)
 
     await setup_dependencies(app=app, sessionmaker=sessionmaker)
 
@@ -43,6 +42,10 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(router)
+
+    @app.exception_handler(NotFoundError)
+    async def not_found_handler(_request: Request, exc: NotFoundError):
+        return JSONResponse(status_code=404, content={"detail": exc.detail})
 
     return app
 
